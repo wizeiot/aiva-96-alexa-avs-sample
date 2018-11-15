@@ -39,8 +39,8 @@ void usage() {
           "Usage: ") +
           "WakeWordAgent -e <engine_type>\n" +
           " engine_type options:\n" +
-          " 'kitt_ai'\n" +
-          " 'sensory'\n" +
+//          " 'kitt_ai'\n" +
+//          " 'sensory'\n" +
           " 'gpio'\n" +
           "WakeWordAgent [-h] [--help]\n" +
           " prints help (this message)\n";
@@ -54,27 +54,30 @@ bool parseArgs(int argc, char* argv[],
   bool printHelp = (2 == argc) &&
           (std::string("-h") == argv[1] || std::string("--help") == argv[1]);
 
-  bool validArgCount = printHelp || (3 == argc);
+//  bool validArgCount = printHelp || (3 == argc);
+  bool validArgCount = printHelp || (2 == argc);
 
-  if(!validArgCount) {
-    usage();
-    return false;
-  }
+//  if(!validArgCount) {
+//    usage();
+//    return false;
+//  }
 
-  if(std::string("-e") != argv[1]) {
-    usage();
-    return false;
-  }
+//  if(std::string("-e") != argv[1]) {
+//    usage();
+//    return false;
+//  }
 
-  std::string engineParam = argv[2];
+//  std::string engineParam = argv[2];
+  std::string engineParam = argv[1];
 
-  if("kitt_ai" == engineParam) {
-    *engineType = WakeWordEngineFactory::EngineType::KITT_AI_SNOWBOY_ENGINE;
-    return true;
-  } else if("sensory" == engineParam) {
-    *engineType = WakeWordEngineFactory::EngineType::SENSORY_ENGINE;
-    return true;
-  } else if("gpio" == engineParam) {
+//  if("kitt_ai" == engineParam) {
+//    *engineType = WakeWordEngineFactory::EngineType::KITT_AI_SNOWBOY_ENGINE;
+//    return true;
+//  } else if("sensory" == engineParam) {
+//    *engineType = WakeWordEngineFactory::EngineType::SENSORY_ENGINE;
+//    return true;
+//  } else 
+  if("gpio" == engineParam) {
     *engineType = WakeWordEngineFactory::EngineType::GPIO_ENGINE;
     return true;
   }

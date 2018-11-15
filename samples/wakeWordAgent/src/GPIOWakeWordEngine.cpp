@@ -3,8 +3,14 @@
 #include "WakeWordUtils.h"
 #include "WakeWordException.h"
 
-#include <wiringPi.h>
+//#include <wiringPi.h>
+//#include <gpio.h>
+#include "libsoc_board.h"
+#include "libsoc_gpio.h"
+#include "gpio.h"
 #include <unistd.h>
+
+#define BUTTON "GPIO-A"
 
 namespace AlexaWakeWord {
 
@@ -37,13 +43,17 @@ void GPIOWakeWordEngine::resume() {
 void GPIOWakeWordEngine::init() {
 
   log(Logger::DEBUG, "GPIOWakeWordEngine: initializing");
-  if (wiringPiSetup() < 0) {
+  //if (wiringPiSetup() < 0) {
+  //  std::string errorMsg = "Failed to initialize WiringPi library";
+  //  throw WakeWordException(errorMsg);
+  //}
+
+  // INPUT is defined in "wiringPi.h"
+  //pinMode(GPIO_PIN, INPUT);
+  if (gpio_open(gpio_id(BUTTON), "in")){
     std::string errorMsg = "Failed to initialize WiringPi library";
     throw WakeWordException(errorMsg);
   }
-
-  // INPUT is defined in "wiringPi.h"
-  pinMode(GPIO_PIN, INPUT);
 
   log(Logger::DEBUG, "Starting GPIO reading thread");
   m_isRunning = true;
@@ -55,7 +65,8 @@ void GPIOWakeWordEngine::mainLoop() {
   bool gpioReady { true };
 
   while (m_isRunning) {
-    int gpioValue = digitalRead(GPIO_PIN);
+    //int gpioValue = digitalRead(GPIO_PIN);
+    int gpioValue = digitalRead(gpio_id(BUTTON));
 
     // HIGH and LOW are defined in "wiringPi.h"
     // The following detects the rising edge of GPIO input

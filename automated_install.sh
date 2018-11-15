@@ -141,7 +141,7 @@ get_credential()
 check_credentials()
 {
   clear
-  echo "======AVS + Raspberry Pi User Credentials======"
+  echo "====== AiVA-96 AVS User Credentials======"
   echo ""
   echo ""
   if [ "${#ProductID}" -eq 0 ] || [ "${#ClientID}" -eq 0 ] || [ "${#ClientSecret}" -eq 0 ]; then
@@ -326,75 +326,94 @@ get_alpn_version()
 # Script to check if all is good before install script runs
 #-------------------------------------------------------
 clear
-echo "====== AVS + Raspberry Pi Licenses and Agreement ======"
+echo "=============================================================="
+echo "        AiVA-96 AVS + cmuSphinx Licenses and Agreement"
+echo "=============================================================="
 echo ""
-echo ""
-echo "This code base is dependent on several external libraries and virtual environments like Kitt-Ai, Sensory, ALSA, Atlas, Portaudio, VLC, NodeJS, npm, Oracle JDK, OpenSSL, Maven & CMake."
+echo "This code base is dependent on several external libraries and virtual environments like cmuSphinx, cmuPocksphinx, 96BoardGPIO, libsoc, Atlas, VLC, NodeJS, npm, OpenJDK, OpenSSL, Maven & CMake."
 echo ""
 echo "Please read the document \"Installer_Licenses.txt\" from the sample app repository and the corresponding licenses of the above."
 echo ""
 echo "Do you agree to the terms and conditions of the necessary software from the third party sources and want to download the necessary software from the third party sources?"
 echo ""
-echo ""
-echo "======================================================="
-echo ""
-echo ""
 parse_user_input 1 0 1
 
-clear
-echo "=============== AVS + Raspberry Pi Installer =========="
-echo ""
-echo ""
-echo "Welcome to the AVS + Raspberry Pi installer."
-echo "If you don't have an Amazon developer account, please register for one"
-echo "at https://developer.amazon.com/edw/home.html and follow the"
-echo "instructions on github.com to create an AVS device or application."
-echo ""
-echo ""
-echo "======================================================="
-echo ""
-echo ""
-echo "Do you have an Amazon developer account?"
-echo ""
-echo ""
-parse_user_input 1 1 1
-USER_RESPONSE=$?
-if [ "$USER_RESPONSE" = "$NO_ANSWER" ]; then
-  clear
-  echo "====== Register for an Amazon Developer Account ======="
-  echo ""
-  echo ""
-  echo "Please register for an Amazon developer account\nat https://developer.amazon.com/edw/home.html before continuing."
-  echo ""
-  echo ""
-  echo "Ready to continue?"
-  echo ""
-  echo ""
-  echo "======================================================="
-  echo ""
-  echo ""
-  parse_user_input 1 0 1
-fi
-
+#-------------------------------------------------------
+# Display install script title information
+#-------------------------------------------------------
+echo "=============================================================="
+echo " AiVA-96 for Amazon AVS Java Sample App on DragonBoard 410c"
+echo " ** For getting 'Product ID, Client ID, Client Secret',"
+echo "    visit https://developer.amazon.com/edw/home.html"
+echo "=============================================================="
 
 #--------------------------------------------------------------------------------------------
 # Checking if script has been updated by the user with ProductID, ClientID, and ClientSecret
 #--------------------------------------------------------------------------------------------
+# If 'registinfo.txt' file exist, then read line 1, 3, 5 into variables
+registinfo="registinfo-amazon.txt"
+if [ -f $registinfo ]; then
+    IFS=$'\r\n' GLOBIGNORE="*" command eval 'Line=($(cat $registinfo))'
+    ProductID=${Line[1]}
+    ClientID=${Line[3]}
+    ClientSecret=${Line[5]}
+fi
 
+# If regist info is not edited, delete exist variables
 if [ "$ProductID" = "YOUR_PRODUCT_ID_HERE" ]; then
-  ProductID=""
+    ProductID=""
 fi
 if [ "$ClientID" = "YOUR_CLIENT_ID_HERE" ]; then
-  ClientID=""
+    ClientID=""
 fi
 if [ "$ClientSecret" = "YOUR_CLIENT_SECRET_HERE" ]; then
-  ClientSecret=""
+    ClientSecret=""
 fi
 
-check_credentials
+# If regist info is empty, ask user to input
+while [[ -z $ProductID ]] ; do
+    read -p "Product ID : " ProductID
+done
+
+while [[ -z $ClientID ]] ; do
+    read -p "Client ID : " ClientID
+done
+
+while [[ -z $ClientSecret ]] ; do
+    read -p "Client Secret : " ClientSecret
+done
+
+# check_credentials
+
+# Display regist info for confirming
+echo "Product ID is" $ProductID
+echo "Client ID is" $ClientID
+echo "Client Secret is" $ClientSecret
+echo ""
+parse_user_input 1 0 1
+
+if [ ! -f $registinfo ]; then
+    echo "# Product ID" | tee ./$registinfo > /dev/null
+    echo "$ProductID" | tee -a ./$registinfo > /dev/null
+    echo "# Web Client ID" | tee -a ./$registinfo > /dev/null
+    echo "$ClientID" | tee -a ./$registinfo > /dev/null
+    echo "# Web Client secret" | tee -a ./$registinfo > /dev/null
+    echo "$ClientSecret" | tee -a ./$registinfo > /dev/null
+fi
+
+#-------------------------------------------------------
+# Add library path
+#-------------------------------------------------------
+if [ "${#LD_LIBRARY_PATH}" -eq 0 ]; then
+  echo "export LD_LIBRARY_PATH=/usr/lib/vlc:/usr/local/lib" | tee -a ~/.bashrc > /dev/null
+  echo "export VLC_PLUGIN_PATH=/usr/lib/vlc/plugins:/usr/local/lib/pkgconfig" | tee -a ~/.bashrc > /dev/null
+  echo "unset JAVA_TOOL_OPTIONS" | tee -a ~/.bashrc > /dev/null
+  source ~/.bashrc
+fi
 
 # Preconfigured variables
-OS=rpi
+SDKRoot=$(pwd)
+OS=debian
 User=$(id -un)
 Group=$(id -gn)
 Origin=$(pwd)
@@ -402,79 +421,17 @@ Samples_Loc=$Origin/samples
 Java_Client_Loc=$Samples_Loc/javaclient
 Wake_Word_Agent_Loc=$Samples_Loc/wakeWordAgent
 Companion_Service_Loc=$Samples_Loc/companionService
-Kitt_Ai_Loc=$Wake_Word_Agent_Loc/kitt_ai
-Sensory_Loc=$Wake_Word_Agent_Loc/sensory
+NineSixBoardsLib_Loc=$Origin/96Boards
+SphinxLib_Loc=$Origin/cmuSphinx
 External_Loc=$Wake_Word_Agent_Loc/ext
 Locale="en-US"
-
-mkdir $Kitt_Ai_Loc
-mkdir $Sensory_Loc
-mkdir $External_Loc
-
-
-# Select a Locale
-clear
-echo "==== Setting Locale ====="
-echo ""
-echo ""
-echo "Which locale would you like to use?"
-echo ""
-echo ""
-echo "======================================================="
-echo ""
-echo ""
-select_option Locale "en-US" "en-GB" "de-DE" "en-CA" "en-IN" "ja-JP" "en-AU"
-
-# Force audio to correct output
-clear
-echo "==== Setting Audio Output ====="
-echo ""
-echo ""
-echo "Are you using 3.5mm jack or HDMI cable for audio output?"
-echo ""
-echo ""
-echo "======================================================="
-echo ""
-echo ""
-select_option audio_output "3.5mm jack" "HDMI audio output"
-if [ "$audio_output" == "3.5mm jack" ]; then
-  sudo amixer cset numid=3 1
-  echo "Audio forced to 3.5mm jack."
-else
-  sudo amixer cset numid=3 2
-  echo "Audio forced to HDMI."
-fi
-
+# Locale = "en-US" "en-GB" "de-DE" "en-CA" "en-IN" "ja-JP" "en-AU"
 Wake_Word_Detection_Enabled="true"
-# Check if user wants to enable Wake Word "Alexa" Detection
-clear
-echo "=== Enabling Hands Free Experience using Wake Word \"Alexa\" ===="
-echo ""
-echo ""
-echo "Do you want to enable \"Alexa\" Wake Word Detection?"
-echo ""
-echo ""
-echo "======================================================="
-echo ""
-echo ""
-parse_user_input 1 1 1
-USER_RESPONSE=$?
-if [ "$USER_RESPONSE" = "$NO_ANSWER" ]; then
-  Wake_Word_Detection_Enabled="false"
-fi
+# Wake_Word_Detection_Enabled = "true" or "false"
 
-echo ""
-echo ""
-echo "==============================================="
-echo " Making sure we are installing to the right OS"
-echo "==============================================="
-echo ""
-echo ""
-echo "=========== Installing Oracle Java8 ==========="
-echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
-chmod +x $Java_Client_Loc/install-java8.sh
-cd $Java_Client_Loc && bash ./install-java8.sh
-cd $Origin
+mkdir $External_Loc
+mkdir $NineSixBoardsLib_Loc
+mkdir $SphinxLib_Loc
 
 echo ""
 echo ""
@@ -489,34 +446,98 @@ echo ""
 
 # Install dependencies
 echo "========== Update Aptitude ==========="
+date
 sudo apt-get update
-sudo apt-get upgrade -yq
+#sudo apt-get upgrade -yq
 
-echo "========== Installing Git ============"
+echo "========== Install package dependencies ==========="
 sudo apt-get install -y git
+sudo apt-get install -y build-essential
+sudo apt-get install -y autoconf
+sudo apt-get install -y automake
+sudo apt-get install -y libtool
+sudo apt-get install -y swig3.0
+sudo apt-get install -y python-dev
+sudo apt-get install -y nodejs-dev
+sudo apt-get install -y cmake
+sudo apt-get install -y pkg-config
+sudo apt-get install -y libpcre3-dev
+sudo apt-get install -y openjdk-8-jdk
+sudo apt-get install -y vlc
+sudo apt-get install -y vlc-bin # vlc-nox is deprecated
+sudo apt-get install -y vlc-data
+sudo apt-get install -y nano
 
-echo "========== Getting the code for Kitt-Ai ==========="
-cd $Kitt_Ai_Loc
-git clone https://github.com/Kitt-AI/snowboy.git
+echo "========== Installing Libraries ALSA, Atlas ==========="
+sudo apt-get -y install libasound2-dev
+sudo apt-get -y install libatlas-base-dev
+sudo apt-get -y install pulseaudio
+sudo ldconfig
 
-echo "========== Getting the code for Sensory ==========="
-cd $Sensory_Loc
-git clone https://github.com/Sensory/alexa-rpi.git
+echo "========== Installing Libraries for cmuSphinx ==========="
+sudo apt-get -y install bison 
+#sudo apt-get -y install libasound2-dev 
+sudo apt-get -y install swig 
+#sudo apt-get -y install autoconf 
+#sudo apt-get -y install automake 
+#sudo apt-get -y install libtool 
+#sudo apt-get -y install python-dev
+
+echo "========== Getting the code for libsoc ==========="
+cd $NineSixBoardsLib_Loc
+if [ ! -d libsoc ]; then
+    git clone https://github.com/wizeiot/libsoc.git
+fi
+cd libsoc
+autoreconf -i
+./configure --enable-python=2 --enable-board="dragonboard410c"
+make && sudo make install
+sudo ldconfig
+
+echo "========== Getting the code for 96BoardsGPIO ==========="
+cd $NineSixBoardsLib_Loc
+if [ ! -d 96BoardsGPIO ]; then
+    git clone https://github.com/wizeiot/96BoardsGPIO.git
+fi
+cd 96BoardsGPIO/Archive
+./autogen.sh
+./configure
+make && sudo make install
+sudo ldconfig
+
+echo "========== Getting the code for cmuSphinxbase ==========="
+cd $SphinxLib_Loc
+if [ ! -d sphinxbase ]; then
+    git clone https://github.com/wizeiot/sphinxbase.git
+fi
+cd sphinxbase
+./autogen.sh
+./configure --enable-fixed
+make
+sudo make install
+
+echo "========== Getting the code for cmuPocketSphin AiVA DB410c ==========="
+cd $SphinxLib_Loc
+if [ ! -d pocketsphinx ]; then
+    git clone https://github.com/wizeiot/pocketsphinx.git
+fi
+cd pocketsphinx
+git checkout DB410c
+mkdir extlib
+cp ../../96Boards/96BoardsGPIO/Archive/lib/.libs/lib96BoardsGPIO.la ./extlib
+cp ../../96Boards/96BoardsGPIO/Archive/lib/.libs/lib96BoardsGPIO.so ./extlib
+cp ../../96Boards/libsoc/lib/.libs/libsoc.la ./extlib
+cp ../../96Boards/libsoc/lib/.libs/libsoc.so ./extlib
+./autogen.sh
+./configure
+make
+sudo make install
 
 cd $Origin
 
-echo "========== Installing Libraries for Kitt-Ai and Sensory: ALSA, Atlas ==========="
-sudo apt-get -y install libasound2-dev
-sudo apt-get -y install libatlas-base-dev
-sudo ldconfig
-
-echo "========== Installing WiringPi ==========="
-sudo apt-get -y install wiringpi
-sudo ldconfig
-
 echo "========== Installing VLC and associated Environmental Variables =========="
-sudo apt-get install -y vlc vlc-nox vlc-data
-#Make sure that the libraries can be found
+#sudo apt-get install -y vlc vlc-nox vlc-data
+# Make sure that the libraries can be found
 sudo sh -c "echo \"/usr/lib/vlc\" >> /etc/ld.so.conf.d/vlc_lib.conf"
 sudo sh -c "echo \"VLC_PLUGIN_PATH=\"/usr/lib/vlc/plugin\"\" >> /etc/environment"
 
@@ -546,14 +567,7 @@ echo "========== Installing OpenSSL and Generating Self-Signed Certificates ====
 sudo apt-get install -y openssl
 sudo ldconfig
 
-echo "========== Downloading and Building Port Audio Library needed for Kitt-Ai Snowboy =========="
-cd $Kitt_Ai_Loc/snowboy/examples/C++
-bash ./install_portaudio.sh
-sudo ldconfig
-cd $Kitt_Ai_Loc/snowboy/examples/C++
-make -j4
-sudo ldconfig
-cd $Origin
+unset JAVA_TOOL_OPTIONS
 
 echo "========== Generating ssl.cnf =========="
 if [ -f $Java_Client_Loc/ssl.cnf ]; then
@@ -591,7 +605,7 @@ fi
 printf "pcm.!default {\n  type asym\n   playback.pcm {\n     type plug\n     slave.pcm \"hw:0,0\"\n   }\n   capture.pcm {\n     type plug\n     slave.pcm \"hw:1,0\"\n   }\n}" >> /home/$User/.asoundrc
 
 echo "========== Installing CMake =========="
-sudo apt-get install -y cmake
+#sudo apt-get install -y cmake
 sudo ldconfig
 
 echo "========== Installing Java Client =========="
@@ -617,29 +631,15 @@ if [ "$Wake_Word_Detection_Enabled" = "true" ]; then
   mkdir $External_Loc/lib
   mkdir $External_Loc/resources
 
-  cp $Kitt_Ai_Loc/snowboy/include/snowboy-detect.h $External_Loc/include/snowboy-detect.h
-  cp $Kitt_Ai_Loc/snowboy/examples/C++/portaudio/install/include/portaudio.h $External_Loc/include/portaudio.h
-  cp $Kitt_Ai_Loc/snowboy/examples/C++/portaudio/install/include/pa_ringbuffer.h $External_Loc/include/pa_ringbuffer.h
-  cp $Kitt_Ai_Loc/snowboy/examples/C++/portaudio/install/include/pa_util.h $External_Loc/include/pa_util.h
-  cp $Kitt_Ai_Loc/snowboy/lib/$OS/libsnowboy-detect.a $External_Loc/lib/libsnowboy-detect.a
-  cp $Kitt_Ai_Loc/snowboy/examples/C++/portaudio/install/lib/libportaudio.a $External_Loc/lib/libportaudio.a
-  cp $Kitt_Ai_Loc/snowboy/resources/common.res $External_Loc/resources/common.res
-  cp $Kitt_Ai_Loc/snowboy/resources/alexa/alexa-avs-sample-app/alexa.umdl $External_Loc/resources/alexa.umdl
+  cp $NineSixBoardsLib_Loc/libsoc/lib/include/*.h $External_Loc/include/
+  cp $NineSixBoardsLib_Loc/libsoc/lib/.libs/libsoc.a $External_Loc/lib/libsoc.a
 
-  sudo ln -s /usr/lib/atlas-base/atlas/libblas.so.3 $External_Loc/lib/libblas.so.3
-
-  $Sensory_Loc/alexa-rpi/bin/sdk-license file $Sensory_Loc/alexa-rpi/config/license-key.txt $Sensory_Loc/alexa-rpi/lib/libsnsr.a $Sensory_Loc/alexa-rpi/models/spot-alexa-rpi-20500.snsr $Sensory_Loc/alexa-rpi/models/spot-alexa-rpi-21000.snsr $Sensory_Loc/alexa-rpi/models/spot-alexa-rpi-31000.snsr
-  cp $Sensory_Loc/alexa-rpi/include/snsr.h $External_Loc/include/snsr.h
-  cp $Sensory_Loc/alexa-rpi/lib/libsnsr.a $External_Loc/lib/libsnsr.a
-  cp $Sensory_Loc/alexa-rpi/models/spot-alexa-rpi-31000.snsr $External_Loc/resources/spot-alexa-rpi.snsr
-
-  mkdir $Wake_Word_Agent_Loc/tst/ext
-  cp -R $External_Loc/* $Wake_Word_Agent_Loc/tst/ext
-  cd $Origin
+  cp $NineSixBoardsLib_Loc/96BoardsGPIO/Archive/lib/gpio.h $cp $External_Loc/include/
+  cp $NineSixBoardsLib_Loc/96BoardsGPIO/Archive/lib/.libs/lib96BoardsGPIO.a $External_Loc/lib/lib96BoardsGPIO.a
 
   echo "========== Compiling Wake Word Agent =========="
   cd $Wake_Word_Agent_Loc/src && cmake . && make -j4
-  cd $Wake_Word_Agent_Loc/tst && cmake . && make -j4
+ #cd $Wake_Word_Agent_Loc/tst && cmake . && make -j4
 fi
 
 chown -R $User:$Group $Origin
@@ -647,25 +647,37 @@ chown -R $User:$Group /home/$User/.asoundrc
 
 cd $Origin
 
-echo ""
-echo '============================='
-echo '*****************************'
-echo '========= Finished =========='
-echo '*****************************'
-echo '============================='
-echo ""
+#-------------------------------------------------------
+# Finished
+#-------------------------------------------------------
+echo "=============================================================="
+echo " Installation Finished. Run sample application,"
+echo " '$ bash ./alexa_avs_sample.sh'" 
+echo " ** You need to get an authentication once. "
 
-Number_Terminals=2
+# build running script for sample app and wake engine
+echo "#!/bin/bash" | tee ./alexa_avs_sample.sh > /dev/null
+echo "cd $Companion_Service_Loc" | tee -a ./alexa_avs_sample.sh > /dev/null
+echo "xterm -e 'npm start' &" | tee -a ./alexa_avs_sample.sh > /dev/null
+echo "cd $Java_Client_Loc" | tee -a ./alexa_avs_sample.sh > /dev/null
+echo "xterm -e 'mvn exec:exec' &" | tee -a ./alexa_avs_sample.sh > /dev/null
+
 if [ "$Wake_Word_Detection_Enabled" = "true" ]; then
-  Number_Terminals=3
+  echo "#!/bin/bash" | tee ./wake_word_agent.sh > /dev/null
+  echo "cd $Wake_Word_Agent_Loc" | tee -a ./wake_word_agent.sh > /dev/null
+  echo "xterm -e 'sudo ./wakeWordAgent gpio' &" | tee -a ./wake_word_agent.sh > /dev/null
+  echo "cd $Origin" | tee -a ./wake_word_agent.sh > /dev/null
+  echo "xterm -e './run_sphinx_no_log.sh' &" | tee -a ./wake_word_agent.sh > /dev/null
+
+  echo "=============================================================="
+  echo " Run wake word agent, after get an alexa app authentication."
+  echo " '$ bash ./wake_word_agent.sh'"
 fi
-echo "To run the demo, do the following in $Number_Terminals seperate terminals:"
-echo "Run the companion service: cd $Companion_Service_Loc && npm start"
-echo "Run the AVS Java Client: cd $Java_Client_Loc && mvn exec:exec"
-if [ "$Wake_Word_Detection_Enabled" = "true" ]; then
-  echo "Run the wake word agent: "
-  echo "  Sensory: cd $Wake_Word_Agent_Loc/src && ./wakeWordAgent -e sensory"
-  echo "  KITT_AI: cd $Wake_Word_Agent_Loc/src && ./wakeWordAgent -e kitt_ai"
-  echo "  GPIO: PLEASE NOTE -- If using this option, run the wake word agent as sudo:"
-  echo "  cd $Wake_Word_Agent_Loc/src && sudo ./wakeWordAgent -e gpio"
-fi
+
+#chmod +x run_sphinx*
+#chmod +x sphinx_test.sh
+chmod +x *.sh
+
+echo "=============================================================="
+echo " Please reboot system before running sample applications."
+echo "=============================================================="
